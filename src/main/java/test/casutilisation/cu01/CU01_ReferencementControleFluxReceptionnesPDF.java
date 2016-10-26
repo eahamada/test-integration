@@ -46,7 +46,7 @@ public class CU01_ReferencementControleFluxReceptionnesPDF {
   }
   
   @Bean(name="priseEnChargeFluxReceptionnes")
-  public FileReadingMessageSource receptionPdf(@Value("${dossierReception:./cu01/priseEnChargeFluxReceptionnes}") File directory, @Qualifier("cu01_reception_order_comparator") Comparator<File> receptionOrderComparator){
+  public FileReadingMessageSource receptionPdf( File directory, @Qualifier("cu01_reception_order_comparator") Comparator<File> receptionOrderComparator){
      FileReadingMessageSource result = Files.inboundAdapter(directory, receptionOrderComparator).autoCreateDirectory(true).ignoreHidden().nioLocker().get();
     return result;
   }

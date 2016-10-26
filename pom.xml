@@ -17,6 +17,7 @@
     <ensudoc-com.version>0.1.4</ensudoc-com.version>
     <h2.version>1.4.192</h2.version>
     <joda-time.version>2.9.4</joda-time.version>
+    <jackson.version>2.8.3</jackson.version>
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
   </properties>
@@ -111,6 +112,21 @@
       <artifactId>joda-time</artifactId>
       <version>${joda-time.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-xml</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-yaml</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -128,27 +144,28 @@
     <profile>
       <id>liquibase</id>
       <build>
-      <plugins>
-        <plugin>
-          <groupId>org.liquibase</groupId>
-          <artifactId>liquibase-maven-plugin</artifactId>
-          <version>3.5.3</version>
-          <configuration>
-            <changeLogFile>src/main/resources/liquibase/changelog.sql</changeLogFile>
-            <driver>org.h2.Driver</driver>
-            <url>jdbc:h2:./test</url>
-            <username>sa</username>
-            <password></password>
-          </configuration>
-          <executions>
-            <execution>
-              <phase>process-resources</phase>
-              <goals>
-                <goal>update</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
+        <plugins>
+          <plugin>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-maven-plugin</artifactId>
+            <version>3.5.3</version>
+            <configuration>
+              <changeLogFile>src/main/resources/liquibase/changelog.sql</changeLogFile>
+              <driver>org.h2.Driver</driver>
+              <url>jdbc:h2:./test</url>
+              <username>sa</username>
+              <password></password>
+            <promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>
+            </configuration>
+            <executions>
+              <execution>
+                <phase>process-resources</phase>
+                <goals>
+                  <goal>update</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
       </build>
     </profile>

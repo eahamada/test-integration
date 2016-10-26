@@ -1,0 +1,9 @@
+ensuDocumentsUrl: http://10.153.219.91:8380/end-appli/
+requetes:
+   identificationFluxATraiter: >
+     SELECT '' as fichier_pdf, '' as  cd_doc, '' as  id_tag, '' as  id_empr
+     -- test
+      FROM dual
+      WHERE false
+   majCodeEtatFlux: >
+   majCodeEtatDocument: >

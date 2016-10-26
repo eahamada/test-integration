@@ -8,3 +8,9 @@ create table instance_flux (
   date_prise_en_charge TIMESTAMP NOT NULL,
   date_derniere_modification TIMESTAMP NOT NULL
 );
+
+--changeset eahamada:2
+CREATE OR REPLACE VIEW FLUX_A_TRAITER AS
+SELECT '' as fichier_pdf, '' as  cd_doc, '' as  id_tag, '' as  id_empr
+FROM dual
+WHERE false
