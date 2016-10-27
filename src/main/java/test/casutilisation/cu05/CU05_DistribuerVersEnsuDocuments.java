@@ -6,9 +6,9 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -17,20 +17,20 @@ import org.springframework.integration.core.MessageSource;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.dsl.SourcePollingChannelAdapterSpec;
+import org.springframework.integration.dsl.channel.MessageChannels;
 import org.springframework.integration.dsl.core.Pollers;
 import org.springframework.integration.dsl.support.Consumer;
 import org.springframework.integration.http.converter.SerializingHttpMessageConverter;
-import org.springframework.integration.http.outbound.HttpRequestExecutingMessageHandler;
+import org.springframework.integration.http.inbound.HttpRequestHandlingMessagingGateway;
+import org.springframework.integration.http.inbound.RequestMapping;
 import org.springframework.integration.jdbc.JdbcPollingChannelAdapter;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.messaging.MessageHandler;
-import org.springframework.messaging.support.GenericMessage;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableList;
 
 import fr.gouv.finances.ensu.documents.bean.Document;
-import fr.gouv.finances.ensu.documents.ws.report.GlobalReport;
 
 @Component
 public class CU05_DistribuerVersEnsuDocuments {
@@ -54,34 +54,35 @@ public class CU05_DistribuerVersEnsuDocuments {
   }
   
   @Bean
-  public MessageHandler constitutionDS05(final CU05Configuration cu05configuration){
-    final HttpRequestExecutingMessageHandler result = new HttpRequestExecutingMessageHandler(cu05configuration.ensuDocumentsUrl);
-    result.setRequestFactory(cu05configuration.clientHttpRequestFactory);
-    result.setHttpMethod(HttpMethod.POST);
-    result.setMessageConverters(messageConverters());
-    result.setExpectedResponseType(GlobalReport.class);
-    return result;
+  public HttpRequestHandlingMessagingGateway constitutionDS05(final CU05Configuration cu05configuration ) {
+      HttpRequestHandlingMessagingGateway gateway = new HttpRequestHandlingMessagingGateway(true);
+      RequestMapping requestMapping = new RequestMapping();
+      requestMapping.setMethods(HttpMethod.POST);
+      requestMapping.setPathPatterns(cu05configuration.ensuDocumentsUrl);
+      gateway.setRequestMapping(requestMapping);
+      gateway.setRequestChannel(requestChannel());
+//      gateway.setReplyChannel(replyChannel);
+      gateway.setMessageConverters(messageConverters());
+      return gateway;
   }
+  public MessageChannel requestChannel() {
+      return MessageChannels.direct().get();
+  }
+
   
   private List<HttpMessageConverter<?>> messageConverters() {
+    final MappingJackson2HttpMessageConverter jacksonHttpMessageConverter = new MappingJackson2HttpMessageConverter();
+    jacksonHttpMessageConverter.setSupportedMediaTypes(ImmutableList.<MediaType>builder()
+        .add(MediaType.APPLICATION_JSON)
+        .add(MediaType.APPLICATION_OCTET_STREAM)
+        .build());
     final List<HttpMessageConverter<?>> result = ImmutableList.<HttpMessageConverter<?>>builder()
-        .add(new ByteArrayHttpMessageConverter())
-        .add(new StringHttpMessageConverter(Charset.forName("UTF-8")))
-        .add(new MappingJackson2HttpMessageConverter())
-        .add(new SerializingHttpMessageConverter())
+        .add(jacksonHttpMessageConverter)
         .build();
     return result;
   }
 
-  @Bean
-  public MessageHandler traitementReponseDS05(final CU05Configuration cu05configuration ){
-//    clientHttpRequestFactory.createRequest(null,null).execute();
-    final HttpRequestExecutingMessageHandler result = new HttpRequestExecutingMessageHandler(cu05configuration.ensuDocumentsUrl);
-    result.setRequestFactory(cu05configuration.clientHttpRequestFactory);
-    return result;
-  }
-  
-  @Bean
+
   public Consumer<SourcePollingChannelAdapterSpec> cu05poller(){
     final Consumer<SourcePollingChannelAdapterSpec> result = new Consumer<SourcePollingChannelAdapterSpec>() {
 
@@ -92,23 +93,29 @@ public class CU05_DistribuerVersEnsuDocuments {
       
   }
   
-  @Bean
-  public IntegrationFlow cu05Flow(@Qualifier("fluxATraiter") final MessageSource<?> messageSource, @Qualifier("cu05poller") final Consumer<SourcePollingChannelAdapterSpec> consumer, @Qualifier("constitutionDS05") MessageHandler messageHandler) {
-    messageHandler.handleMessage(new GenericMessage<Document>(new Document()));
-    return simpleIntegrationFlow(messageSource, consumer, messageHandler);
-  }
+//  public IntegrationFlow cu05Flow(@Qualifier("fluxATraiter") final MessageSource<?> messageSource,  @Qualifier("constitutionDS05") HttpRequestHandlingMessagingGateway gateway) {
+//    final IntegrationFlow result = IntegrationFlows
+//        .from(messageSource, cu05poller())
+//        .handle(gateway)
+//        .get();
+//    gateway.getRequestChannel().send(MessageBuilder.withPayload(new Document()).build());
+//    return result;
+//  }
   
-  @Bean
-  public IntegrationFlow testCu05Flow(@Qualifier("fluxATraiter") final MessageSource<?> messageSource, @Qualifier("cu05poller") final Consumer<SourcePollingChannelAdapterSpec> consumer, @Qualifier("constitutionDS05") MessageHandler messageHandler) {
-    return simpleIntegrationFlow(messageSource, consumer, messageHandler);
+  public HttpRequestHandlingMessagingGateway httpGate() {
+      HttpRequestHandlingMessagingGateway result = new HttpRequestHandlingMessagingGateway(true);
+//      RequestMapping requestMapping = new RequestMapping();
+//      requestMapping.setMethods(HttpMethod.POST);
+//      requestMapping.setPathPatterns("/foo");
+//      result.setRequestMapping(requestMapping);
+//      result.setRequestChannel(requestChannel());
+      return result;
   }
-  
 
-  private  IntegrationFlow simpleIntegrationFlow( final MessageSource<?> messageSource, final Consumer<SourcePollingChannelAdapterSpec> consumer, final MessageHandler messageHandler) {
-    final IntegrationFlow result = IntegrationFlows
-        .from(messageSource, consumer)
-        .handle(messageHandler)
-        .get();
-    return result;
+  @Bean
+  public IntegrationFlow flow() {
+      return IntegrationFlows.from(requestChannel())
+              .handle(httpGate())
+              .get();
   }
 }
