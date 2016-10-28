@@ -1,34 +1,41 @@
 package test.casutilisation.cu05;
 
+import java.util.List;
+
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
 
+@JsonDeserialize(builder=DS05Reponse.Builder.class)
 public class DS05Reponse {
-  public final IdTag idTag;
-  public final UrlDoc urlDoc;
-  
+  public final List<Document> documents;
+  public final Document document;
   private DS05Reponse(Builder builder) {
-    this.idTag = builder.idTag;
-    this.urlDoc = builder.urlDoc;
+      this.documents = builder.documents;
+    
+    this.document = builder.document;
   }
   public static class Builder{
 
-    private IdTag idTag;
-    private UrlDoc urlDoc;
-    public Builder withIdTag(IdTag idTag) {
-      this.idTag = idTag;
+    private List<Document> documents;
+    private Document document;
+
+    public Builder withDocuments(List<Document> documents) {
+      this.documents = documents;
       return this;
     }
-    public Builder withUrlDoc(UrlDoc urlDoc) {
-      this.urlDoc = urlDoc;
+
+    public Builder withDocument(Document document) {
+      this.document = document;
       return this;
     }
+
     public DS05Reponse build() {
       validate();
       return new DS05Reponse(this);
     }
+
     private void validate() {
-      Preconditions.checkNotNull(idTag, "idTag may not be null");
-      Preconditions.checkNotNull(urlDoc, "urlDoc may not be null");
     }
   }
+  
 }

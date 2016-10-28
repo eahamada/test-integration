@@ -4,11 +4,12 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Map;
 
 import javax.sql.DataSource;
@@ -23,25 +24,30 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-import org.springframework.core.serializer.support.SerializingConverter;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.converter.ByteArrayMessageConverter;
 
 import test.casutilisation.cu05.CU05Configuration;
 import test.casutilisation.cu05.RequetesCU05;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 import com.google.common.collect.ImmutableMap;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
 import fr.gouv.finances.ensu.documents.bean.Document;
+import fr.gouv.finances.ensu.documents.ws.report.DocumentReport;
+import fr.gouv.finances.ensu.documents.ws.report.GlobalReport;
 
 
 @Configuration
@@ -52,12 +58,43 @@ import fr.gouv.finances.ensu.documents.bean.Document;
 public class Main {
 
   private final static Logger LOGGER = LoggerFactory.getLogger(Main.class);
-
-  public static void main(String[] args) throws IOException {
-    final ConfigurableApplicationContext ctx = new AnnotationConfigApplicationContext(Main.class);
-    MessageChannel ds05 = ctx.getBean("ds05Channel", MessageChannel.class);
+  
+  public static void serializeDocumentToFile() throws IOException{
+    FileOutputStream fout = new FileOutputStream("576d4c1c4c301fc33fe4100a.document");
+    ObjectOutputStream oos = new ObjectOutputStream(fout);
+    oos.writeObject(createDocument());
+    oos.close();
+  }
+  public static Document createDocument() throws  IOException{
     final byte[] bytes = readBytesFromInputStream(new FileInputStream(new File("src/main/resources/casutilisation/cu05/576d4c1c4c301fc33fe4100a.pdf")));
-    ds05.send(new Message<byte[] >() {
+    final Document document = new Document();
+    document.setCdDoc("cd_doc");
+    document.setIdDoc("id_doc");
+    document.setIdEmpr("id_empr");
+    document.setDonnees(bytes);
+    return document;
+  }
+  
+  public static void testGlobalReport() throws JsonParseException, JsonMappingException, IOException{
+    String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><documents><document iddoc=\"id_doc\" cddoc=\"cd_doc\" idempr=\"id_empr\"><motifsRejets></motifsRejets></document></documents>";
+    XmlMapper mapper = xmlMapper();
+    GlobalReport readValue = mapper.readValue(xml, GlobalReport.class);
+    for (DocumentReport d : readValue.getReports()) {
+      System.out.println(d.getCddoc());
+    }
+  }
+  public static void main(String[] args) throws Exception {
+    testGlobalReport() ;
+  }
+  private static void readConfigurations() throws IOException {
+    final ConfigurableApplicationContext ctx = new AnnotationConfigApplicationContext(Main.class);
+    
+    LOGGER.info("Hit 'Enter' to terminate");
+    getReader().readLine();
+    ctx.close();
+  }
+  private static void sendDocument(MessageChannel ds05, final Document document) {
+    ds05.send(new Message<Document >() {
 
       @Override
       public MessageHeaders getHeaders() {
@@ -71,19 +108,10 @@ public class Main {
       }
 
       @Override
-      public byte[]  getPayload() {
-        final Document element = new Document();
-        element.setCdDoc("cd_doc");
-        element.setIdDoc("id_doc");
-        element.setIdEmpr("id_empr");
-        element.setDonnees(bytes);
-        byte[] result = new SerializingConverter().convert(element);
-        return result;       
+      public Document  getPayload() {
+        return document;       
       }
     });
-    LOGGER.info("Hit 'Enter' to terminate");
-    getReader().readLine();
-    ctx.close();
   }
 
   private static BufferedReader getReader() {
@@ -118,6 +146,14 @@ public class Main {
       }
     });
     
+    return result;
+  }
+  @Bean
+  public static XmlMapper xmlMapper(){
+    JaxbAnnotationModule jaxbAnnotationModule = new JaxbAnnotationModule();
+    final XmlMapper result = new XmlMapper();
+    result.enable(SerializationFeature.INDENT_OUTPUT);
+    result.registerModule(jaxbAnnotationModule);
     return result;
   }
 
