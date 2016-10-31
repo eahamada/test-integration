@@ -34,12 +34,15 @@ import test.casutilisation.cu05.CU05Configuration;
 import test.casutilisation.cu05.RequetesCU05;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 import com.google.common.collect.ImmutableMap;
 import com.zaxxer.hikari.HikariConfig;
@@ -75,16 +78,17 @@ public class Main {
     return document;
   }
   
-  public static void testGlobalReport() throws JsonParseException, JsonMappingException, IOException{
-    String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><documents><document iddoc=\"id_doc\" cddoc=\"cd_doc\" idempr=\"id_empr\"><motifsRejets></motifsRejets></document></documents>";
+  public static void globalReport() throws JsonParseException, JsonMappingException, IOException{
+    String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><documents><document iddoc=\"id_doc\" cddoc=\"cd_doc\" idempr=\"id_empr\"><motifsRejets><motifRejet reference=\"CODE_DOCUMENT_INCORRECT_201000\"><codeErreur>20</codeErreur><libelleErreur>Un ou plusieurs paramètres incorrects</libelleErreur><codeMotif>1000</codeMotif><libelleMotif>Code document incorrect</libelleMotif><commentaires></commentaires></motifRejet><motifRejet reference=\"IDENTIFIANT_DOCUMENT_INCORRECT_201001\"><codeErreur>20</codeErreur><libelleErreur>Un ou plusieurs paramètres incorrects</libelleErreur><codeMotif>1001</codeMotif><libelleMotif>Identifiant du document incorrect</libelleMotif><commentaires></commentaires></motifRejet><motifRejet reference=\"EMPREINTE_INCORRECTE_201002\"><codeErreur>20</codeErreur><libelleErreur>Un ou plusieurs paramètres incorrects</libelleErreur><codeMotif>1002</codeMotif><libelleMotif>Empreinte incorrecte</libelleMotif><commentaires></commentaires></motifRejet></motifsRejets></document></documents>";
     XmlMapper mapper = xmlMapper();
+    
     GlobalReport readValue = mapper.readValue(xml, GlobalReport.class);
     for (DocumentReport d : readValue.getReports()) {
       System.out.println(d.getCddoc());
     }
   }
   public static void main(String[] args) throws Exception {
-    testGlobalReport() ;
+    globalReport() ;
   }
   private static void readConfigurations() throws IOException {
     final ConfigurableApplicationContext ctx = new AnnotationConfigApplicationContext(Main.class);
@@ -152,8 +156,11 @@ public class Main {
   public static XmlMapper xmlMapper(){
     JaxbAnnotationModule jaxbAnnotationModule = new JaxbAnnotationModule();
     final XmlMapper result = new XmlMapper();
-    result.enable(SerializationFeature.INDENT_OUTPUT);
+    System.out.println(result.getDeserializationConfig().getAnnotationIntrospector().getClass());
     result.registerModule(jaxbAnnotationModule);
+    result.enable(SerializationFeature.INDENT_OUTPUT);
+    result.enable(MapperFeature.USE_WRAPPER_NAME_AS_PROPERTY_NAME);
+    result.enable(MapperFeature.ALLOW_EXPLICIT_PROPERTY_RENAMING);
     return result;
   }
 
